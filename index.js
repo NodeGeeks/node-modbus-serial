@@ -132,6 +132,7 @@ var ModbusRTU = function (port) {
     this._nextCode = null; // function code of current function call.
     this._nextLength = 0; // number of bytes in current answer.
     this._next = null; // the function to call on success or failure
+    this._requests = {};
 
     this._unitID = 1;
 };
@@ -173,13 +174,13 @@ ModbusRTU.prototype.open = function (callback) {
 
                 /* check minimal length
                  */
-                if (data.length < 5) {
-                    error = "Data length error, expected " +
-                        length + " got " + data.length;
-                    if (next)
-                        next(error);
-                    return;
-                }
+                //if (data.length < 5) {
+                //    error = "Data length error, expected " +
+                //        length + " got " + data.length;
+                //    if (next)
+                //        next(error);
+                //    return;
+                //}
 
                 /* check message CRC
                  * if CRC is bad raise an error
@@ -198,37 +199,37 @@ ModbusRTU.prototype.open = function (callback) {
 
                 /* check for modbus exception
                  */
-                if (data.length == 5 &&
-                        code == (0x80 | modbus._nextCode)) {
-                    error = "Modbus exception " + data.readUInt8(2);
-                    if (next)
-                        next(error);
-                    return;
-                }
+                //if (data.length == 5 &&
+                //        code == (0x80 | modbus._nextCode)) {
+                //    error = "Modbus exception " + data.readUInt8(2);
+                //    if (next)
+                //        next(error);
+                //    return;
+                //}
 
                 /* check message length
                  * if we do not expect this data
                  * raise an error
                  */
-                if (data.length != length) {
-                    error = "Data length error, expected " +
-                        length + " got " + data.length;
-                    if (next)
-                        next(error);
-                    return;
-                }
+                //if (data.length != length) {
+                //    error = "Data length error, expected " +
+                //        length + " got " + data.length;
+                //    if (next)
+                //        next(error);
+                //    return;
+                //}
 
                 /* check message address and code
                  * if we do not expect this message
                  * raise an error
                  */
-                if (address != modbus._nextAddress || code != modbus._nextCode) {
-                    error = "Unexpected data error, expected " +
-                        modbus._nextAddress + " got " + address;
-                    if (next)
-                        next(error);
-                    return;
-                }
+                //if (address != modbus._nextAddress || code != modbus._nextCode) {
+                //    error = "Unexpected data error, expected " +
+                //        modbus._nextAddress + " got " + address;
+                //    if (next)
+                //        next(error);
+                //    return;
+                //}
 
                 // data is OK - clear state variables
                 modbus._nextAddress = null;
