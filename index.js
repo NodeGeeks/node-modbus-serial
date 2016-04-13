@@ -37,20 +37,20 @@ var crc16 = require('./utils/crc16');
  * @param {Function} next the function to call next.
  */
 function _readFC2(data, next) {
-    var length = data.readUInt8(2);
-    var contents = [];
+  var length = data.readUInt8(2);
+  var contents = [];
 
-    for (var i = 0; i < length; i++) {
-        var reg = data[i + 3];
+  for (var i = 0; i < length; i++) {
+    var reg = data[i + 3];
 
-        for (var j = 0; j < 8; j++) {
-            contents.push((reg & 1) == 1);
-            reg = reg >> 1;
-        }
+    for (var j = 0; j < 8; j++) {
+      contents.push((reg & 1) == 1);
+      reg = reg >> 1;
     }
+  }
 
-    if (next)
-        next(null, {"data": contents, "buffer": data.slice(3, 3 + length)});
+  if (next)
+    next(null, {"data": contents, "buffer": data.slice(3, 3 + length)});
 }
 
 /**
@@ -61,16 +61,16 @@ function _readFC2(data, next) {
  * @param {Function} next the function to call next.
  */
 function _readFC4(data, next) {
-    var length = data.readUInt8(2);
-    var contents = [];
+  var length = data.readUInt8(2);
+  var contents = [];
 
-    for (var i = 0; i < length; i += 2) {
-        var reg = data.readUInt16BE(i + 3);
-        contents.push(reg);
-    }
+  for (var i = 0; i < length; i += 2) {
+    var reg = data.readUInt16BE(i + 3);
+    contents.push(reg);
+  }
 
-    if (next)
-        next(null, {"data": contents, "buffer": data.slice(3, 3 + length)});
+  if (next)
+    next(null, {"data": contents, "buffer": data.slice(3, 3 + length)});
 }
 
 /**
@@ -81,11 +81,11 @@ function _readFC4(data, next) {
  * @param {Function} next the function to call next.
  */
 function _readFC5(data, next) {
-    var dataAddress = data.readUInt16BE(2);
-    var state = data.readUInt16BE(4);
+  var dataAddress = data.readUInt16BE(2);
+  var state = data.readUInt16BE(4);
 
-    if (next)
-        next(null, {"address": dataAddress, "state": (state == 0xff00)});
+  if (next)
+    next(null, {"address": dataAddress, "state": (state == 0xff00)});
 }
 
 /**
@@ -96,11 +96,11 @@ function _readFC5(data, next) {
  * @param {Function} next the function to call next.
  */
 function _readFC6(data, next) {
-    var dataAddress = data.readUInt16BE(2);
-    var value = data.readUInt16BE(4);
+  var dataAddress = data.readUInt16BE(2);
+  var value = data.readUInt16BE(4);
 
-    if (next)
-        next(null, {"address": dataAddress, "value": value});
+  if (next)
+    next(null, {"address": dataAddress, "value": value});
 }
 
 /**
@@ -111,11 +111,11 @@ function _readFC6(data, next) {
  * @param {Function} next the function to call next.
  */
 function _readFC16(data, next) {
-    var dataAddress = data.readUInt16BE(2);
-    var length = data.readUInt16BE(4);
+  var dataAddress = data.readUInt16BE(2);
+  var length = data.readUInt16BE(4);
 
-    if (next)
-        next(null, {"address": dataAddress, "length": length});
+  if (next)
+    next(null, {"address": dataAddress, "length": length});
 }
 
 /**
@@ -124,17 +124,17 @@ function _readFC16(data, next) {
  * @param {SerialPort} port the serial port to use.
  */
 var ModbusRTU = function (port) {
-    // the serial port to use
-    this._port = port;
+  // the serial port to use
+  this._port = port;
 
-    // state variables
-    this._nextAddress = null; // unit address of current function call.
-    this._nextCode = null; // function code of current function call.
-    this._nextLength = 0; // number of bytes in current answer.
-    this._next = null; // the function to call on success or failure
-    this._requests = {};
+  // old state variables
+  //this._nextAddress = null; // unit address of current function call.
+  //this._nextCode = null; // function code of current function call.
+  //this._nextLength = 0; // number of bytes in current answer.
+  //this._next = null; // the function to call on success or failure
+  this._requests = {};
 
-    this._unitID = 1;
+  this._unitID = 1;
 };
 
 /**
@@ -144,132 +144,131 @@ var ModbusRTU = function (port) {
  *      of failure.
  */
 ModbusRTU.prototype.open = function (callback) {
-    var modbus = this;
+  var modbus = this;
 
-    // open the serial port
-    modbus._port.open(function (error) {
-        if (error) {
-            /* On serial port open error
-            * call next function
-            */
-            if (callback)
-                callback(error);
-        } else {
-            /* On serial port open OK
-             * call next function
-             */
-            if (callback)
-                callback(error);
+  // open the serial port
+  modbus._port.open(function (error) {
+    if (error) {
+      /* On serial port open error
+       * call next function
+       */
+      if (callback)
+        callback(error);
+    } else {
+      /* On serial port open OK
+       * call next function
+       */
+      if (callback)
+        callback(error);
 
-            /* On serial port success
-             * register the modbus parser functions
-             */
-            modbus._port.on('data', function(data) {
-                // set locale helpers variables
-                var length = modbus._nextLength;
-                var next =  modbus._next;
+      /* On serial port success
+       * register the modbus parser functions
+       */
+      modbus._port.on('data', function (data) {
+        // set locale helpers variables
 
-                /* check incoming data
-                 */
+        /* check incoming data
+         */
 
-                /* check minimal length
-                 */
-                //if (data.length < 5) {
-                //    error = "Data length error, expected " +
-                //        length + " got " + data.length;
-                //    if (next)
-                //        next(error);
-                //    return;
-                //}
-
-                /* check message CRC
-                 * if CRC is bad raise an error
-                 */
-                var crcIn = data.readUInt16LE(data.length - 2);
-                if (crcIn != crc16(data.slice(0, -2))) {
-                    error = "CRC error";
-                    if (next)
-                        next(error);
-                    return;
-                }
-
-                // if crc is OK, read address and function code
-                var address = data.readUInt8(0);
-                var code = data.readUInt8(1);
-
-                /* check for modbus exception
-                 */
-                //if (data.length == 5 &&
-                //        code == (0x80 | modbus._nextCode)) {
-                //    error = "Modbus exception " + data.readUInt8(2);
-                //    if (next)
-                //        next(error);
-                //    return;
-                //}
-
-                /* check message length
-                 * if we do not expect this data
-                 * raise an error
-                 */
-                //if (data.length != length) {
-                //    error = "Data length error, expected " +
-                //        length + " got " + data.length;
-                //    if (next)
-                //        next(error);
-                //    return;
-                //}
-
-                /* check message address and code
-                 * if we do not expect this message
-                 * raise an error
-                 */
-                //if (address != modbus._nextAddress || code != modbus._nextCode) {
-                //    error = "Unexpected data error, expected " +
-                //        modbus._nextAddress + " got " + address;
-                //    if (next)
-                //        next(error);
-                //    return;
-                //}
-
-                // data is OK - clear state variables
-                modbus._nextAddress = null;
-                modbus._nextCode = null;
-                modbus._next = null;
-
-                /* parse incoming data
-                 */
-
-                switch (code) {
-                    case 1:
-                    case 2:
-                        // Read Coil Status (FC=01)
-                        // Read Input Status (FC=02)
-                        _readFC2(data, next);
-                        break;
-                    case 3:
-                    case 4:
-                        // Read Input Registers (FC=04)
-                        // Read Holding Registers (FC=03)
-                        _readFC4(data, next);
-                        break;
-                    case 5:
-                        // Force Single Coil
-                        _readFC5(data, next);
-                        break;
-                    case 6:
-                        // Preset Single Register
-                        _readFC6(data, next);
-                        break;
-                    case 15:
-                    case 16:
-                        // Force Multiple Coils
-                        // Preset Multiple Registers
-                        _readFC16(data, next);
-                        break;
-                }
-            });
+        /* check minimal length
+         */
+        if (data.length < 5) {
+          error = "Data length error, length must be greater then 5";
+          if (next)
+            next(error);
+          return;
         }
-    });
+
+        /* check message CRC
+         * if CRC is bad raise an error
+         */
+        var crcIn = data.readUInt16LE(data.length - 2);
+        if (crcIn != crc16(data.slice(0, -2))) {
+          error = "CRC error";
+          if (next)
+            next(error);
+          return;
+        }
+
+        // if crc is OK, read address and function code
+        var address = data.readUInt8(0);
+        var length = modbus.requests[address]._nextLength;
+        var next = modbus.requests[address]._next;
+        var code = data.readUInt8(1);
+
+        /* check for modbus exception
+         */
+        if (data.length == 5 &&
+            code == (0x80 | modbus.requests[address]._nextCode)) {
+          error = "Modbus exception " + data.readUInt8(2);
+          if (next)
+            next(error);
+          return;
+        }
+
+        /* check message length
+         * if we do not expect this data
+         * raise an error
+         */
+        if (data.length != length) {
+          error = "Data length error, expected " +
+              length + " got " + data.length;
+          if (next)
+            next(error);
+          return;
+        }
+
+        /* check message address and code
+         * if we do not expect this message
+         * raise an error
+         */
+        //if (address != modbus._nextAddress || code != modbus._nextCode) {
+        //  error = "Unexpected data error, expected " +
+        //      modbus._nextAddress + " got " + address;
+        //  if (next)
+        //    next(error);
+        //  return;
+        //}
+
+        // data is OK - clear state variables
+        modbus.requests[address]._nextAddress = null;
+        modbus.requests[address]._nextCode = null;
+        modbus.requests[address]._next = null;
+
+        /* parse incoming data
+         */
+
+        switch (code) {
+          case 1:
+          case 2:
+            // Read Coil Status (FC=01)
+            // Read Input Status (FC=02)
+            _readFC2(data, next);
+            break;
+          case 3:
+          case 4:
+            // Read Input Registers (FC=04)
+            // Read Holding Registers (FC=03)
+            _readFC4(data, next);
+            break;
+          case 5:
+            // Force Single Coil
+            _readFC5(data, next);
+            break;
+          case 6:
+            // Preset Single Register
+            _readFC6(data, next);
+            break;
+          case 15:
+          case 16:
+            // Force Multiple Coils
+            // Preset Multiple Registers
+            _readFC16(data, next);
+            break;
+        }
+      });
+    }
+  });
 };
 
 /**
@@ -281,7 +280,7 @@ ModbusRTU.prototype.open = function (callback) {
  * @param {Function} next the function to call next.
  */
 ModbusRTU.prototype.writeFC1 = function (address, dataAddress, length, next) {
-    this.writeFC2(address, dataAddress, length, next, 1);
+  this.writeFC2(address, dataAddress, length, next, 1);
 };
 
 /**
@@ -293,35 +292,42 @@ ModbusRTU.prototype.writeFC1 = function (address, dataAddress, length, next) {
  * @param {Function} next the function to call next.
  */
 ModbusRTU.prototype.writeFC2 = function (address, dataAddress, length, next, code) {
-    // function code defaults to 2
-    code = code || 2;
+  // function code defaults to 2
+  code = code || 2;
 
-    // check port is actually open before attempting write
-    if( this._port.isOpen() === false) {
-        var error = "Port Not Open";
-        if (next) next(error);
-        return;
-    }
+  // check port is actually open before attempting write
+  if (this._port.isOpen() === false) {
+    var error = "Port Not Open";
+    if (next) next(error);
+    return;
+  }
 
-    // set state variables
-    this._nextAddress = address;
-    this._nextCode = code;
-    this._nextLength = 3 + parseInt((length - 1) / 8 + 1) + 2;
-    this._next = next;
+  this._requests[address] = {
+    _nextAddress: address,
+    _nextCode: code,
+    _nextLength: 3 + parseInt((length - 1) / 8 + 1) + 2,
+    _next: next
+  };
 
-    var codeLength = 6;
-    var buf = new Buffer(codeLength + 2); // add 2 crc bytes
+  // set state variables
+  //this._nextAddress = address;
+  //this._nextCode = code;
+  //this._nextLength = 3 + parseInt((length - 1) / 8 + 1) + 2;
+  //this._next = next;
 
-    buf.writeUInt8(address, 0);
-    buf.writeUInt8(code, 1);
-    buf.writeUInt16BE(dataAddress, 2);
-    buf.writeUInt16BE(length, 4);
+  var codeLength = 6;
+  var buf = new Buffer(codeLength + 2); // add 2 crc bytes
 
-    // add crc bytes to buffer
-    buf.writeUInt16LE(crc16(buf.slice(0, -2)), codeLength);
+  buf.writeUInt8(address, 0);
+  buf.writeUInt8(code, 1);
+  buf.writeUInt16BE(dataAddress, 2);
+  buf.writeUInt16BE(length, 4);
 
-    // write buffer to serial port
-    this._port.write(buf);
+  // add crc bytes to buffer
+  buf.writeUInt16LE(crc16(buf.slice(0, -2)), codeLength);
+
+  // write buffer to serial port
+  this._port.write(buf);
 };
 
 /**
@@ -333,7 +339,7 @@ ModbusRTU.prototype.writeFC2 = function (address, dataAddress, length, next, cod
  * @param {Function} next the function to call next.
  */
 ModbusRTU.prototype.writeFC3 = function (address, dataAddress, length, next) {
-    this.writeFC4(address, dataAddress, length, next, 3);
+  this.writeFC4(address, dataAddress, length, next, 3);
 };
 
 /**
@@ -345,35 +351,41 @@ ModbusRTU.prototype.writeFC3 = function (address, dataAddress, length, next) {
  * @param {Function} next the function to call next.
  */
 ModbusRTU.prototype.writeFC4 = function (address, dataAddress, length, next, code) {
-    // function code defaults to 4
-    code = code || 4;
+  // function code defaults to 4
+  code = code || 4;
 
-    // check port is actually open before attempting write
-    if( this._port.isOpen() === false) {
-        var error = "Port Not Open";
-        if (next) next(error);
-        return;
-    }
+  // check port is actually open before attempting write
+  if (this._port.isOpen() === false) {
+    var error = "Port Not Open";
+    if (next) next(error);
+    return;
+  }
 
-    // set state variables
-    this._nextAddress = address;
-    this._nextCode = code;
-    this._nextLength = 3 + 2 * length + 2;
-    this._next = next;
+  // set state variables
+  this._requests[address] = {
+    _nextAddress: address,
+    _nextCode: code,
+    _nextLength: 3 + 2 * length + 2,
+    _next: next
+  };
+  //this._nextAddress = address;
+  //this._nextCode = code;
+  //this._nextLength = 3 + 2 * length + 2;
+  //this._next = next;
 
-    var codeLength = 6;
-    var buf = new Buffer(codeLength + 2); // add 2 crc bytes
+  var codeLength = 6;
+  var buf = new Buffer(codeLength + 2); // add 2 crc bytes
 
-    buf.writeUInt8(address, 0);
-    buf.writeUInt8(code, 1);
-    buf.writeUInt16BE(dataAddress, 2);
-    buf.writeUInt16BE(length, 4);
+  buf.writeUInt8(address, 0);
+  buf.writeUInt8(code, 1);
+  buf.writeUInt16BE(dataAddress, 2);
+  buf.writeUInt16BE(length, 4);
 
-    // add crc bytes to buffer
-    buf.writeUInt16LE(crc16(buf.slice(0, -2)), codeLength);
+  // add crc bytes to buffer
+  buf.writeUInt16LE(crc16(buf.slice(0, -2)), codeLength);
 
-    // write buffer to serial port
-    this._port.write(buf);
+  // write buffer to serial port
+  this._port.write(buf);
 };
 
 /**
@@ -384,40 +396,46 @@ ModbusRTU.prototype.writeFC4 = function (address, dataAddress, length, next, cod
  * @param {number} state the boolean state to write to the coil (true / false).
  * @param {Function} next the function to call next.
  */
-ModbusRTU.prototype.writeFC5 =  function (address, dataAddress, state, next) {
-    var code = 5;
+ModbusRTU.prototype.writeFC5 = function (address, dataAddress, state, next) {
+  var code = 5;
 
-    // check port is actually open before attempting write
-    if( this._port.isOpen() === false) {
-        var error = "Port Not Open";
-        if (next) next(error);
-        return;
-    }
+  // check port is actually open before attempting write
+  if (this._port.isOpen() === false) {
+    var error = "Port Not Open";
+    if (next) next(error);
+    return;
+  }
 
-    // set state variables
-    this._nextAddress = address;
-    this._nextCode = code;
-    this._nextLength = 8;
-    this._next = next;
+  this._requests[address] = {
+    _nextAddress: address,
+    _nextCode: code,
+    _nextLength: 8,
+    _next: next
+  };
+  // set state variables
+  //this._nextAddress = address;
+  //this._nextCode = code;
+  //this._nextLength = 8;
+  //this._next = next;
 
-    var codeLength = 6;
-    var buf = new Buffer(codeLength + 2); // add 2 crc bytes
+  var codeLength = 6;
+  var buf = new Buffer(codeLength + 2); // add 2 crc bytes
 
-    buf.writeUInt8(address, 0);
-    buf.writeUInt8(code, 1);
-    buf.writeUInt16BE(dataAddress, 2);
+  buf.writeUInt8(address, 0);
+  buf.writeUInt8(code, 1);
+  buf.writeUInt16BE(dataAddress, 2);
 
-    if (state) {
-        buf.writeUInt16BE(0xff00, 4);
-    } else {
-        buf.writeUInt16BE(0x0000, 4);
-    }
+  if (state) {
+    buf.writeUInt16BE(0xff00, 4);
+  } else {
+    buf.writeUInt16BE(0x0000, 4);
+  }
 
-    // add crc bytes to buffer
-    buf.writeUInt16LE(crc16(buf.slice(0, -2)), codeLength);
+  // add crc bytes to buffer
+  buf.writeUInt16LE(crc16(buf.slice(0, -2)), codeLength);
 
-    // write buffer to serial port
-    this._port.write(buf);
+  // write buffer to serial port
+  this._port.write(buf);
 };
 
 /**
@@ -428,36 +446,41 @@ ModbusRTU.prototype.writeFC5 =  function (address, dataAddress, state, next) {
  * @param {number} value the value to write to the register.
  * @param {Function} next the function to call next.
  */
-ModbusRTU.prototype.writeFC6 =  function (address, dataAddress, value, next) {
-    var code = 6;
+ModbusRTU.prototype.writeFC6 = function (address, dataAddress, value, next) {
+  var code = 6;
 
-    // check port is actually open before attempting write
-    if( this._port.isOpen() === false) {
-        var error = "Port Not Open";
-        if (next) next(error);
-        return;
-    }
+  // check port is actually open before attempting write
+  if (this._port.isOpen() === false) {
+    var error = "Port Not Open";
+    if (next) next(error);
+    return;
+  }
+  this._requests[address] = {
+    _nextAddress: address,
+    _nextCode: code,
+    _nextLength: 8,
+    _next: next
+  };
+  // set state variables
+  //this._nextAddress = address;
+  //this._nextCode = code;
+  //this._nextLength = 8;
+  //this._next = next;
 
-    // set state variables
-    this._nextAddress = address;
-    this._nextCode = code;
-    this._nextLength = 8;
-    this._next = next;
+  var codeLength = 6; // 1B deviceAddress + 1B functionCode + 2B dataAddress + 2B value
+  var buf = new Buffer(codeLength + 2); // add 2 crc bytes
 
-    var codeLength = 6; // 1B deviceAddress + 1B functionCode + 2B dataAddress + 2B value
-    var buf = new Buffer(codeLength + 2); // add 2 crc bytes
+  buf.writeUInt8(address, 0);
+  buf.writeUInt8(code, 1);
+  buf.writeUInt16BE(dataAddress, 2);
 
-    buf.writeUInt8(address, 0);
-    buf.writeUInt8(code, 1);
-    buf.writeUInt16BE(dataAddress, 2);
+  buf.writeUInt16BE(value, 4);
 
-    buf.writeUInt16BE(value, 4);
+  // add crc bytes to buffer
+  buf.writeUInt16LE(crc16(buf.slice(0, -2)), codeLength);
 
-    // add crc bytes to buffer
-    buf.writeUInt16LE(crc16(buf.slice(0, -2)), codeLength);
-
-    // write buffer to serial port
-    this._port.write(buf);
+  // write buffer to serial port
+  this._port.write(buf);
 };
 
 /**
@@ -469,49 +492,55 @@ ModbusRTU.prototype.writeFC6 =  function (address, dataAddress, value, next) {
  * @param {Function} next the function to call next.
  */
 ModbusRTU.prototype.writeFC15 = function (address, dataAddress, array, next) {
-    var code = 15;
+  var code = 15;
 
-    // check port is actually open before attempting write
-    if( this._port.isOpen() === false) {
-        var error = "Port Not Open";
-        if (next) next(error);
-        return;
+  // check port is actually open before attempting write
+  if (this._port.isOpen() === false) {
+    var error = "Port Not Open";
+    if (next) next(error);
+    return;
+  }
+
+  this._requests[address] = {
+    _nextAddress: address,
+    _nextCode: code,
+    _nextLength: 8,
+    _next: next
+  };
+  // set state variables
+  //this._nextAddress = address;
+  //this._nextCode = code;
+  //this._nextLength = 8;
+  //this._next = next;
+
+  var dataBytes = Math.ceil(array.length / 8);
+  var codeLength = 7 + dataBytes;
+  var buf = new Buffer(codeLength + 2);  // add 2 crc bytes
+
+  buf.writeUInt8(address, 0);
+  buf.writeUInt8(code, 1);
+  buf.writeUInt16BE(dataAddress, 2);
+  buf.writeUInt16BE(array.length, 4);
+  buf.writeUInt8(dataBytes, 6);
+
+  // clear the data bytes before writing bits data
+  for (var i = 0; i < dataBytes; i++) {
+    buf.writeUInt8(0, 7 + i);
+  }
+
+  for (var i = 0; i < array.length; i++) {
+    // buffer bits are already all zero (0)
+    // only set the ones set to one (1)
+    if (array[i]) {
+      buf.writeBit(1, i, 7);
     }
+  }
 
-    // set state variables
-    this._nextAddress = address;
-    this._nextCode = code;
-    this._nextLength = 8;
-    this._next = next;
+  // add crc bytes to buffer
+  buf.writeUInt16LE(crc16(buf.slice(0, -2)), codeLength);
 
-    var dataBytes = Math.ceil(array.length / 8);
-    var codeLength = 7 + dataBytes;
-    var buf = new Buffer(codeLength + 2);  // add 2 crc bytes
-
-    buf.writeUInt8(address, 0);
-    buf.writeUInt8(code, 1);
-    buf.writeUInt16BE(dataAddress, 2);
-    buf.writeUInt16BE(array.length, 4);
-    buf.writeUInt8(dataBytes, 6);
-
-    // clear the data bytes before writing bits data
-    for (var i = 0; i < dataBytes; i++) {
-        buf.writeUInt8(0, 7 + i);
-    }
-
-    for (var i = 0; i < array.length; i++) {
-        // buffer bits are already all zero (0)
-        // only set the ones set to one (1)
-        if (array[i]) {
-            buf.writeBit(1, i, 7);
-        }
-    }
-
-    // add crc bytes to buffer
-    buf.writeUInt16LE(crc16(buf.slice(0, -2)), codeLength);
-
-    // write buffer to serial port
-    this._port.write(buf);
+  // write buffer to serial port
+  this._port.write(buf);
 };
 
 /**
@@ -522,40 +551,45 @@ ModbusRTU.prototype.writeFC15 = function (address, dataAddress, array, next) {
  * @param {Array} array the array of values to write to registers.
  * @param {Function} next the function to call next.
  */
-ModbusRTU.prototype.writeFC16 =  function (address, dataAddress, array, next) {
-    var code = 16;
+ModbusRTU.prototype.writeFC16 = function (address, dataAddress, array, next) {
+  var code = 16;
 
-    // check port is actually open before attempting write
-    if( this._port.isOpen() === false) {
-        var error = "Port Not Open";
-        if (next) next(error);
-        return;
-    }
+  // check port is actually open before attempting write
+  if (this._port.isOpen() === false) {
+    var error = "Port Not Open";
+    if (next) next(error);
+    return;
+  }
+  this._requests[address] = {
+    _nextAddress: address,
+    _nextCode: code,
+    _nextLength: 8,
+    _next: next
+  };
+  // set state variables
+  //this._nextAddress = address;
+  //this._nextCode = code;
+  //this._nextLength = 8;
+  //this._next = next;
 
-    // set state variables
-    this._nextAddress = address;
-    this._nextCode = code;
-    this._nextLength = 8;
-    this._next = next;
+  var codeLength = 7 + 2 * array.length;
+  var buf = new Buffer(codeLength + 2); // add 2 crc bytes
 
-    var codeLength = 7 + 2 * array.length;
-    var buf = new Buffer(codeLength + 2); // add 2 crc bytes
+  buf.writeUInt8(address, 0);
+  buf.writeUInt8(code, 1);
+  buf.writeUInt16BE(dataAddress, 2);
+  buf.writeUInt16BE(array.length, 4);
+  buf.writeUInt8(array.length * 2, 6);
 
-    buf.writeUInt8(address, 0);
-    buf.writeUInt8(code, 1);
-    buf.writeUInt16BE(dataAddress, 2);
-    buf.writeUInt16BE(array.length, 4);
-    buf.writeUInt8(array.length * 2, 6);
+  for (var i = 0; i < array.length; i++) {
+    buf.writeUInt16BE(array[i], 7 + 2 * i);
+  }
 
-    for (var i = 0; i < array.length; i++) {
-        buf.writeUInt16BE(array[i], 7 + 2 * i);
-    }
+  // add crc bytes to buffer
+  buf.writeUInt16LE(crc16(buf.slice(0, -2)), codeLength);
 
-    // add crc bytes to buffer
-    buf.writeUInt16LE(crc16(buf.slice(0, -2)), codeLength);
-
-    // write buffer to serial port
-    this._port.write(buf);
+  // write buffer to serial port
+  this._port.write(buf);
 };
 
 // add the connection shorthand API
